@@ -95,9 +95,8 @@ def _capabilities_used(new_messages: list[ModelMessage]) -> list[tuple[str, str]
 
 
 def _render_used(used: list[tuple[str, str]]) -> Panel:
-    body = Table.grid(padding=(0, 2))
+    body = Table.grid(padding=(0, 1))
     body.add_column()
-    body.add_column(style="dim")
 
     fired = {cap for cap, _ in used}
     header = Text()
@@ -111,15 +110,18 @@ def _render_used(used: list[tuple[str, str]]) -> Panel:
             header.append(" \u25cf", style=style)
         if i < len(CAPABILITY_STACK) - 1:
             header.append("   ")
-    body.add_row(header, "")
+    body.add_row(header)
 
     if used:
-        body.add_row("", "")
+        body.add_row("")
         for cap, detail in used:
             style = CAPABILITY_STYLE.get(cap, "white")
-            body.add_row(Text(f"\u25aa {cap}", style=f"bold {style}"), detail)
+            row = Text()
+            row.append(f"\u25aa {cap}  ", style=f"bold {style}")
+            row.append(detail, style="dim")
+            body.add_row(row)
     else:
-        body.add_row(Text("\u25aa answered directly, no tools this turn", style="dim"), "")
+        body.add_row(Text("\u25aa answered directly, no tools this turn", style="dim"))
 
     return Panel(
         body,
