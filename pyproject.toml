@@ -1,0 +1,22 @@
+[project]
+name = "python-project"
+version = "0.1.0"
+description = "Multi-Agent Architecture Panel Chat Tool"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-ai>=2.0.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+]
+
+[project.scripts]
+arch-panel = "arch_panel.cli:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.0.0",
+    "mypy>=1.10.0",
+    "ruff>=0.3.0",
+]

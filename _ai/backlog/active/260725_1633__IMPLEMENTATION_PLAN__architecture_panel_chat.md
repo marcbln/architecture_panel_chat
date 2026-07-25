@@ -42,7 +42,7 @@ The user interacts with a unified interactive chat session managed by the Modera
 ### Phase 1: Dependency & Environment Setup
 Ensure standard tooling and environment dependencies are configured using the `uv` package manager.
 
-#### [MODIFY] `pyproject.toml`
+#### [NEW FILE] `pyproject.toml`
 Add required production dependencies (`pydantic-ai>=2.0.0`, `typer`, `rich`) and development testing dependencies (`pytest`, `ruff`, `mypy`).
 
 ```toml
@@ -57,8 +57,7 @@ dependencies = [
     "pydantic-ai>=2.0.0",
     "typer>=0.12.0",
     "rich>=13.7.0",
-    "pyyaml>=6.0.1",
-    "python-dotenv>=1.0.1",
+
 ]
 
 [project.scripts]
@@ -266,7 +265,7 @@ async def consult_expert(
     
     # Run the subagent asynchronously with thread-safe deps passing
     result = await expert_agent.run(consultation_request, deps=ctx.deps)
-    return f"\n=== {expert_name.upper()} ANALYSIS ===\n{result.data}\n=========================="
+    return f"\n=== {expert_name.upper()} ANALYSIS ===\n{result.output}\n=========================="
 ```
 
 ---
@@ -342,14 +341,14 @@ def run_chat(target: Path) -> None:
                 
                 console.print(
                     Panel(
-                        result.data, 
+                        result.output, 
                         title="[bold green]Lead Architect Synthesizer[/bold green]", 
                         border_style="green"
                     )
                 )
                 
                 # Persist context history
-                message_history = result.new_messages()
+                message_history = result.all_messages()
                 
             except (KeyboardInterrupt, EOFError):
                 console.print("\n[yellow]Exited chat session.[/yellow]")
