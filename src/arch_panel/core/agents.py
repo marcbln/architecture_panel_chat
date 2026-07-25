@@ -4,6 +4,7 @@ from pydantic_ai import Agent, RunContext
 
 from .capabilities import codebase_inspector
 from .context import CodebaseContext
+from typing import Literal
 
 LLM_MODEL = os.getenv("OPENAI_MODEL_NAME", "openai:gpt-4o")
 
@@ -66,7 +67,7 @@ moderator = Agent(
 @moderator.tool
 async def consult_expert(
     ctx: RunContext[CodebaseContext],
-    expert_name: str,
+    expert_name: Literal["db_expert", "api_expert", "clean_code_expert"],
     consultation_request: str,
 ) -> str:
     experts = {
