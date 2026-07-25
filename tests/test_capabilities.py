@@ -1,9 +1,9 @@
 from pathlib import Path
-import pytest
+
 from pydantic_ai import RunContext
 
-from arch_panel.core.context import CodebaseContext
 from arch_panel.core.capabilities import list_files, read_file
+from arch_panel.core.context import CodebaseContext
 
 
 def test_list_files_filtering(tmp_path: Path) -> None:

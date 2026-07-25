@@ -1,9 +1,17 @@
 import os
+
 from pydantic_ai import Agent, RunContext
-from .context import CodebaseContext
+
 from .capabilities import codebase_inspector
+from .context import CodebaseContext
 
 LLM_MODEL = os.getenv("OPENAI_MODEL_NAME", "openai:gpt-4o")
+
+EXPERT_STACK = [
+    ("db_expert", "Database & State"),
+    ("api_expert", "API & Protocols"),
+    ("clean_code_expert", "Modularity & Clean Code"),
+]
 
 db_expert = Agent(
     LLM_MODEL,

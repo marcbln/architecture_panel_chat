@@ -1,14 +1,36 @@
 import asyncio
 from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.table import Table
 
+from ..core.agents import EXPERT_STACK, LLM_MODEL, moderator
 from ..core.context import CodebaseContext
-from ..core.agents import moderator
 
 console = Console()
+
+
+def _print_banner(target: Path) -> None:
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(justify="right", style="dim")
+    grid.add_column()
+    grid.add_row("panel", "[bold]Architecture Review Board[/bold]")
+    grid.add_row("model", f"[bold]{LLM_MODEL}[/bold]")
+    grid.add_row("workspace", f"[bold blue]{target}[/bold blue]")
+    for i, (key, label) in enumerate(EXPERT_STACK):
+        prefix = "experts" if i == 0 else ""
+        grid.add_row(prefix, f"▪ {label}")
+    console.print(
+        Panel(
+            grid,
+            title="[bold magenta]Multi-Agent Architecture Panel[/bold magenta]",
+            subtitle="[dim]/help for commands · /exit to quit[/dim]",
+            border_style="magenta",
+        )
+    )
 
 
 def run_chat(target: Path) -> None:
@@ -17,13 +39,7 @@ def run_chat(target: Path) -> None:
             console.print(f"[bold red]Error:[/bold red] '{target}' is not a valid directory.")
             raise typer.Exit(code=1)
 
-        console.print(
-            Panel(
-                f"[green]Initialized Architecture Review Board[/green]\n"
-                f"Target workspace: [bold blue]{target}[/bold blue]",
-                title="PydanticAI V2 Panel",
-            )
-        )
+        _print_banner(target)
 
         context = CodebaseContext(root_path=target)
         message_history = []
@@ -60,15 +76,3 @@ def run_chat(target: Path) -> None:
                 break
 
     asyncio.run(_async_loop())
-
-
-def chat_command(
-    target_path: Path = typer.Option(
-        Path("."),
-        "--target",
-        "-t",
-        help="Path to the codebase workspace to analyze.",
-    ),
-) -> None:
-    """Start an interactive review with multiple specialized AI architects."""
-    run_chat(target_path.resolve())

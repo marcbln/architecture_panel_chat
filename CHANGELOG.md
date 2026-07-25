@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-07-25
 
 ### Added
-- Initial project structure with README and CHANGELOG.
+- Multi-Agent Architecture Panel Chat application built on PydanticAI V2.
+- Interactive Typer CLI with console interface supported by Rich panels and spinners.
+- Reusable `codebase_inspector` capability for safe local file reading and listing.
+- Specialized architect sub-agents (`db_expert`, `api_expert`, `clean_code_expert`) and automated delegation tool under `moderator` agent.
+- Unit testing configuration using pytest for capabilities scanning.

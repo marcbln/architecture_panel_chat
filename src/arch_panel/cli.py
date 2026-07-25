@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import typer
+
+from .commands.chat_cmd import run_chat
 from .config import CLI_CONTEXT_SETTINGS
-from .commands.chat_cmd import chat_command
 
 app = typer.Typer(
     name="arch-panel",
@@ -9,12 +12,17 @@ app = typer.Typer(
     help="Interactive multi-agent panel CLI to analyze codebase architecture.",
 )
 
-app.command(name="chat")(chat_command)
 
-
-def main() -> None:
-    app()
-
-
-if __name__ == "__main__":
-    main()
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    target: Path = typer.Option(  # noqa: B008
+        Path("."),
+        "--target",
+        "-t",
+        help="Path to the codebase workspace to analyze.",
+    ),
+) -> None:
+    if ctx.invoked_subcommand is not None:
+        return
+    run_chat(target.resolve())

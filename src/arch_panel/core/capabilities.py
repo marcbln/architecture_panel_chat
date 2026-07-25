@@ -1,5 +1,3 @@
-from typing import List
-from pathlib import Path
 
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import Capability
@@ -7,9 +5,9 @@ from pydantic_ai.capabilities import Capability
 from .context import CodebaseContext
 
 
-def list_files(ctx: RunContext[CodebaseContext]) -> List[str]:
+def list_files(ctx: RunContext[CodebaseContext]) -> list[str]:
     root = ctx.deps.root_path
-    file_list: List[str] = []
+    file_list: list[str] = []
 
     ignore_dirs = {
         ".git", "node_modules", "venv", "__pycache__", ".venv",
@@ -18,12 +16,11 @@ def list_files(ctx: RunContext[CodebaseContext]) -> List[str]:
     allowed_extensions = {".py", ".ts", ".js", ".go", ".rs", ".java", ".json", ".yaml", ".yml", ".md"}
 
     for p in root.rglob("*"):
-        if p.is_file() and p.suffix in allowed_extensions:
-            if not any(part in ignore_dirs for part in p.parts):
-                try:
-                    file_list.append(str(p.relative_to(root)))
-                except ValueError:
-                    continue
+        if p.is_file() and p.suffix in allowed_extensions and not any(part in ignore_dirs for part in p.parts):
+            try:
+                file_list.append(str(p.relative_to(root)))
+            except ValueError:
+                continue
 
     return file_list[:80]
 
@@ -37,8 +34,8 @@ def read_file(ctx: RunContext[CodebaseContext], file_path: str) -> str:
 
     try:
         return target.read_text(encoding="utf-8")
-    except Exception as e:
-        return f"Error reading target file: {str(e)}"
+    except (OSError, UnicodeDecodeError) as e:
+        return f"Error reading target file: {e!s}"
 
 
 codebase_inspector = Capability(
