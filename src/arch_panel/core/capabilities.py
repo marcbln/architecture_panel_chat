@@ -13,7 +13,10 @@ def list_files(ctx: RunContext[CodebaseContext]) -> list[str]:
         ".git", "node_modules", "venv", "__pycache__", ".venv",
         "dist", "build", ".mypy_cache", ".pytest_cache", ".ruff_cache",
     }
-    allowed_extensions = {".py", ".ts", ".js", ".go", ".rs", ".java", ".json", ".yaml", ".yml", ".md"}
+    allowed_extensions = {
+        ".py", ".ts", ".js", ".go", ".rs", ".java", ".json", ".yaml", ".yml", ".md",
+        ".php", ".xml", ".twig", ".vue", ".scss", ".css", ".html", ".csv", ".toml",
+    }
 
     for p in root.rglob("*"):
         if p.is_file() and p.suffix in allowed_extensions and not any(part in ignore_dirs for part in p.parts):
