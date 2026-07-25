@@ -1,31 +1,73 @@
+import subprocess
+from pathlib import Path
 
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import Capability
 
 from .context import CodebaseContext
 
+IGNORE_DIRS = {
+    ".git", "node_modules", "venv", "__pycache__", ".venv",
+    "dist", "build", ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    ".hg", ".svn",
+}
+
+BINARY_EXTENSIONS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg",
+    ".woff", ".woff2", ".ttf", ".eot",
+    ".pyc", ".pyo", ".so", ".dll", ".dylib",
+    ".zip", ".tar", ".gz", ".bz2", ".xz",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+    ".mp3", ".mp4", ".avi", ".mov",
+    ".o", ".a", ".lib",
+    ".db", ".sqlite", ".sqlite3",
+}
+
+
+def _is_git_repo(root: Path) -> bool:
+    return (root / ".git").is_dir()
+
+
+def _list_files_git(root: Path) -> list[str]:
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return []
+    if result.returncode != 0:
+        return []
+    return [f for f in result.stdout.splitlines() if f.strip()][:80]
+
+
+def _list_files_fallback(root: Path) -> list[str]:
+    file_list: list[str] = []
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        if any(part in IGNORE_DIRS for part in p.parts):
+            continue
+        if p.suffix.lower() in BINARY_EXTENSIONS:
+            continue
+        try:
+            file_list.append(str(p.relative_to(root)))
+        except ValueError:
+            continue
+    return file_list[:80]
+
 
 def list_files(ctx: RunContext[CodebaseContext]) -> list[str]:
     root = ctx.deps.root_path
-    file_list: list[str] = []
-
-    ignore_dirs = {
-        ".git", "node_modules", "venv", "__pycache__", ".venv",
-        "dist", "build", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    }
-    allowed_extensions = {
-        ".py", ".ts", ".js", ".go", ".rs", ".java", ".json", ".yaml", ".yml", ".md",
-        ".php", ".xml", ".twig", ".vue", ".scss", ".css", ".html", ".csv", ".toml",
-    }
-
-    for p in root.rglob("*"):
-        if p.is_file() and p.suffix in allowed_extensions and not any(part in ignore_dirs for part in p.parts):
-            try:
-                file_list.append(str(p.relative_to(root)))
-            except ValueError:
-                continue
-
-    return file_list[:80]
+    if _is_git_repo(root):
+        files = _list_files_git(root)
+        if files:
+            return files
+    return _list_files_fallback(root)
 
 
 def read_file(ctx: RunContext[CodebaseContext], file_path: str) -> str:
