@@ -1699,7 +1699,7 @@ dev = [
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "pydantic-ai", extras = ["mcp"], specifier = ">=2.0.0" },
+    { name = "pydantic-ai", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "rich", specifier = ">=13.7.0" },

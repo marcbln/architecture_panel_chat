@@ -1,9 +1,8 @@
 import os
 from typing import Literal
 
-from fastmcp.client.transports import StdioTransport
+import httpx
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.mcp import MCPToolset
 
 from .capabilities import codebase_inspector
 from .context import CodebaseContext
@@ -16,20 +15,17 @@ EXPERT_STACK = [
     ("clean_code_expert", "Modularity & Clean Code"),
 ]
 
-# --- Self-Hosted Mem0 Setup ---
+# --- Self-Hosted Mem0 REST API ---
 MEM0_BASE_URL = os.getenv("MEM0_BASE_URL", "http://127.0.0.1:8888")
-MEM0_API_KEY = os.getenv("MEM0_API_KEY", "none")
+MEM0_API_KEY = os.getenv("MEM0_API_KEY", "")
 
-mem0_transport = StdioTransport(
-    command="uvx",
-    args=["mem0-mcp-server"],
-    env={
-        **os.environ,
-        "MEM0_BASE_URL": MEM0_BASE_URL,
-        "MEM0_API_KEY": MEM0_API_KEY,
-    },
-)
-mem0_toolset = MCPToolset(mem0_transport)
+
+def _mem0_headers() -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if MEM0_API_KEY:
+        headers["X-API-Key"] = MEM0_API_KEY
+    return headers
+
 
 db_expert = Agent(
     LLM_MODEL,
@@ -78,7 +74,6 @@ moderator = Agent(
         "3. Synthesize the reports into a cohesive response, resolving any architectural trade-offs."
     ),
     capabilities=[codebase_inspector],
-    toolsets=[mem0_toolset],
 )
 
 
@@ -102,6 +97,74 @@ async def consult_expert(
     return f"\n=== {expert_name.upper()} ANALYSIS ===\n{result.output}\n=========================="
 
 
+@moderator.tool
+async def add_memory(
+    ctx: RunContext[CodebaseContext],
+    text: str,
+) -> str:
+    """Store a fact or decision in persistent long-term memory.
+
+    Call this when the user agrees on a definitive rule, architectural decision,
+    or coding convention that should persist across sessions.
+    """
+    project_id = ctx.deps.root_path.name
+    user_id = os.getenv("MEM0_USER_ID", "default_user")
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{MEM0_BASE_URL}/memories",
+            headers=_mem0_headers(),
+            json={
+                "messages": [{"role": "user", "content": text}],
+                "user_id": user_id,
+                "agent_id": project_id,
+                "infer": True,
+            },
+            timeout=30,
+        )
+        if resp.status_code == 401:
+            return "Error: Mem0 API authentication failed. Set MEM0_API_KEY or configure auth on the server."
+        resp.raise_for_status()
+        return f"Memory stored: {text}"
+
+
+@moderator.tool
+async def search_memories(
+    ctx: RunContext[CodebaseContext],
+    query: str,
+) -> str:
+    """Search for relevant memories using semantic search.
+
+    Call this on the user's first query to discover any previously saved
+    decisions or coding styles for this project.
+    """
+    project_id = ctx.deps.root_path.name
+    user_id = os.getenv("MEM0_USER_ID", "default_user")
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{MEM0_BASE_URL}/search",
+            headers=_mem0_headers(),
+            json={
+                "query": query,
+                "user_id": user_id,
+                "agent_id": project_id,
+            },
+            timeout=30,
+        )
+        if resp.status_code == 401:
+            return "Error: Mem0 API authentication failed. Set MEM0_API_KEY or configure auth on the server."
+        resp.raise_for_status()
+        data = resp.json()
+        results = data.get("results", [])
+        if not results:
+            return "No relevant memories found."
+        lines = ["Relevant memories:"]
+        for r in results:
+            score = r.get("score", 0)
+            memory = r.get("memory", "")
+            lines.append(f"  - [{score:.2f}] {memory}")
+        return "\n".join(lines)
+
+
 @moderator.system_prompt
 def memory_instructions(ctx: RunContext[CodebaseContext]) -> str:
     project_id = ctx.deps.root_path.name
@@ -109,17 +172,9 @@ def memory_instructions(ctx: RunContext[CodebaseContext]) -> str:
 
     return (
         f"\n--- LONG-TERM PERSISTENT MEMORY (SELF-HOSTED MEM0) ---\n"
-        f"You are connected to a private self-hosted Mem0 instance (on port 8888) via MCP.\n"
-        f"You have tools like `add_memory` and `search_memories` to retrieve and store project facts.\n\n"
-        f"STRICT DIRECTORY-ISOLATION POLICY:\n"
-        f"To keep codebase memories isolated per workspace, you MUST pass these exact parameters "
-        f"on every call to memory management tools:\n"
-        f"  - `app_id`: '{project_id}'\n"
-        f"  - `user_id`: '{user_id}'\n\n"
+        f"You can store and retrieve project facts using `add_memory` and `search_memories`.\n"
+        f"Memories are automatically scoped to directory '{project_id}' and user '{user_id}'.\n\n"
         f"OPERATIONAL STRATEGY:\n"
-        f"1. On the user's first query, proactively call `search_memories` with the `app_id` "
-        f"set to '{project_id}' to discover any previously saved decisions or coding styles.\n"
-        f"2. When a definitive rule or choice is agreed upon (e.g. 'We use PostgreSQL with SQLAlchemy', "
-        f"or 'Use fastAPI for all endpoints'), persist it immediately via `add_memory` so it is "
-        f"available in the next terminal session."
+        f"1. On the user's first query, call `search_memories` to check for existing context.\n"
+        f"2. When a definitive rule or choice is agreed upon, persist it via `add_memory`."
     )

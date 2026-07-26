@@ -167,12 +167,11 @@ def run_chat(target: Path) -> None:
                 with console.status(
                     "[bold green]Panel discussing codebase files...[/bold green]"
                 ):
-                    async with moderator:
-                        result = await moderator.run(
-                            user_msg,
-                            deps=context,
-                            message_history=message_history,
-                        )
+                    result = await moderator.run(
+                        user_msg,
+                        deps=context,
+                        message_history=message_history,
+                    )
 
                 console.print(
                     Panel(
