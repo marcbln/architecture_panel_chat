@@ -40,8 +40,18 @@ def test_list_files_fallback(tmp_path: Path) -> None:
 
 def test_list_files_git_repo(tmp_path: Path) -> None:
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=False)
-    subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True, check=False)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True, check=False)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
 
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "api.py").write_text("print('hello')")
@@ -50,8 +60,19 @@ def test_list_files_git_repo(tmp_path: Path) -> None:
     (tmp_path / "generated").mkdir()
     (tmp_path / "generated" / "output.bin").write_text("binary")
 
-    subprocess.run(["git", "add", "src/", "Dockerfile"], cwd=tmp_path, capture_output=True, check=False)
-    subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True, timeout=10, check=False)
+    subprocess.run(
+        ["git", "add", "src/", "Dockerfile"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=tmp_path,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
 
     (tmp_path / "README.md").write_text("# Project")
     (tmp_path / ".gitignore").write_text("generated/")

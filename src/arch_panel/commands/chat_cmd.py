@@ -19,6 +19,11 @@ TOOL_TO_CAPABILITY: dict[str, str] = {
     "consult_expert": "Orchestration",
     "list_files": "Codebase Inspector",
     "read_file": "Codebase Inspector",
+    "add_memory": "Mem0 Memory Layer",
+    "search_memories": "Mem0 Memory Layer",
+    "get_memories": "Mem0 Memory Layer",
+    "update_memory": "Mem0 Memory Layer",
+    "delete_memory": "Mem0 Memory Layer",
 }
 
 EXPERT_NAME_LABEL: dict[str, str] = dict(EXPERT_STACK)
@@ -30,9 +35,12 @@ CAPABILITY_STYLE: dict[str, str] = {
     "API & Protocols": "yellow",
     "Modularity & Clean Code": "magenta",
     "Thinking": "white",
+    "Mem0 Memory Layer": "purple",
 }
 
-CAPABILITY_STACK = ["Orchestration", "Codebase Inspector"] + [label for _, label in EXPERT_STACK]
+CAPABILITY_STACK = ["Orchestration", "Codebase Inspector", "Mem0 Memory Layer"] + [
+    label for _, label in EXPERT_STACK
+]
 
 
 def _print_banner(target: Path) -> None:
@@ -82,7 +90,9 @@ def _capabilities_used(new_messages: list[ModelMessage]) -> list[tuple[str, str]
                             args = json.loads(args)
                         except json.JSONDecodeError:
                             pass
-                    expert_name = args.get("expert_name", "") if isinstance(args, dict) else ""
+                    expert_name = (
+                        args.get("expert_name", "") if isinstance(args, dict) else ""
+                    )
                     label = EXPERT_NAME_LABEL.get(expert_name, base_cap)
                     used.append((label, f"consult_expert({_fmt_args(part)})"))
                 else:
@@ -134,7 +144,9 @@ def _render_used(used: list[tuple[str, str]]) -> Panel:
 def run_chat(target: Path) -> None:
     async def _async_loop():
         if not target.is_dir():
-            console.print(f"[bold red]Error:[/bold red] '{target}' is not a valid directory.")
+            console.print(
+                f"[bold red]Error:[/bold red] '{target}' is not a valid directory."
+            )
             raise typer.Exit(code=1)
 
         _print_banner(target)
@@ -152,12 +164,15 @@ def run_chat(target: Path) -> None:
                 if not user_msg.strip():
                     continue
 
-                with console.status("[bold green]Panel discussing codebase files...[/bold green]"):
-                    result = await moderator.run(
-                        user_msg,
-                        deps=context,
-                        message_history=message_history,
-                    )
+                with console.status(
+                    "[bold green]Panel discussing codebase files...[/bold green]"
+                ):
+                    async with moderator:
+                        result = await moderator.run(
+                            user_msg,
+                            deps=context,
+                            message_history=message_history,
+                        )
 
                 console.print(
                     Panel(

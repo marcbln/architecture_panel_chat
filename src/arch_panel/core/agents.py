@@ -1,10 +1,12 @@
 import os
+from typing import Literal
 
+from fastmcp.client.transports import StdioTransport
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.mcp import MCPToolset
 
 from .capabilities import codebase_inspector
 from .context import CodebaseContext
-from typing import Literal
 
 LLM_MODEL = os.getenv("OPENAI_MODEL_NAME", "openai:gpt-4o")
 
@@ -13,6 +15,21 @@ EXPERT_STACK = [
     ("api_expert", "API & Protocols"),
     ("clean_code_expert", "Modularity & Clean Code"),
 ]
+
+# --- Self-Hosted Mem0 Setup ---
+MEM0_BASE_URL = os.getenv("MEM0_BASE_URL", "http://127.0.0.1:8888")
+MEM0_API_KEY = os.getenv("MEM0_API_KEY", "none")
+
+mem0_transport = StdioTransport(
+    command="uvx",
+    args=["mem0-mcp-server"],
+    env={
+        **os.environ,
+        "MEM0_BASE_URL": MEM0_BASE_URL,
+        "MEM0_API_KEY": MEM0_API_KEY,
+    },
+)
+mem0_toolset = MCPToolset(mem0_transport)
 
 db_expert = Agent(
     LLM_MODEL,
@@ -61,6 +78,7 @@ moderator = Agent(
         "3. Synthesize the reports into a cohesive response, resolving any architectural trade-offs."
     ),
     capabilities=[codebase_inspector],
+    toolsets=[mem0_toolset],
 )
 
 
@@ -82,3 +100,26 @@ async def consult_expert(
     expert_agent = experts[expert_name]
     result = await expert_agent.run(consultation_request, deps=ctx.deps)
     return f"\n=== {expert_name.upper()} ANALYSIS ===\n{result.output}\n=========================="
+
+
+@moderator.system_prompt
+def memory_instructions(ctx: RunContext[CodebaseContext]) -> str:
+    project_id = ctx.deps.root_path.name
+    user_id = os.getenv("MEM0_USER_ID", "default_user")
+
+    return (
+        f"\n--- LONG-TERM PERSISTENT MEMORY (SELF-HOSTED MEM0) ---\n"
+        f"You are connected to a private self-hosted Mem0 instance (on port 8888) via MCP.\n"
+        f"You have tools like `add_memory` and `search_memories` to retrieve and store project facts.\n\n"
+        f"STRICT DIRECTORY-ISOLATION POLICY:\n"
+        f"To keep codebase memories isolated per workspace, you MUST pass these exact parameters "
+        f"on every call to memory management tools:\n"
+        f"  - `app_id`: '{project_id}'\n"
+        f"  - `user_id`: '{user_id}'\n\n"
+        f"OPERATIONAL STRATEGY:\n"
+        f"1. On the user's first query, proactively call `search_memories` with the `app_id` "
+        f"set to '{project_id}' to discover any previously saved decisions or coding styles.\n"
+        f"2. When a definitive rule or choice is agreed upon (e.g. 'We use PostgreSQL with SQLAlchemy', "
+        f"or 'Use fastAPI for all endpoints'), persist it immediately via `add_memory` so it is "
+        f"available in the next terminal session."
+    )

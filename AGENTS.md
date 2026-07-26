@@ -11,6 +11,14 @@ uv venv && source .venv/bin/activate
 uv pip install -e ".[dev]"
 ```
 
+## Prerequisites
+
+- **Mem0 MCP Server** (for persistent memory): pre-cache the package so first launch doesn't timeout:
+  ```bash
+  uv tool install mem0-mcp-server
+  ```
+  The app launches it automatically via `uvx mem0-mcp-server` at startup.
+
 ## Commands
 
 | Action | Command |
@@ -28,6 +36,9 @@ Run lint → typecheck → test in that order before committing.
 
 - `OPENAI_API_KEY` — **required**
 - `OPENAI_MODEL_NAME` — default `openai:gpt-4o`
+- `MEM0_BASE_URL` — default `http://127.0.0.1:8888` (Points to self-hosted Mem0 container mapping)
+- `MEM0_API_KEY` — default `none` (Set if self-hosted instance has authentication configured)
+- `MEM0_USER_ID` — default `default_user` (Scopes memories to a developer identity)
 
 ## Structure
 
@@ -36,7 +47,7 @@ src/arch_panel/
 ├── cli.py              — Typer entrypoint (arch-panel)
 ├── commands/chat_cmd.py — interactive chat loop
 ├── core/
-│   ├── agents.py       — moderator + 3 specialist agents, consult_expert tool
+│   ├── agents.py       — moderator + 3 specialist agents, consult_expert tool, Mem0 MCP integration
 │   ├── capabilities.py — list_files, read_file (sandboxed to root)
 │   └── context.py      — CodebaseContext dataclass (root_path only)
 ├── config.py
